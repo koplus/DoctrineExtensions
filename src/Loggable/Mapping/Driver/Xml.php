@@ -61,7 +61,7 @@ class Xml extends BaseXml
             $this->inspectElementForVersioned($xmlDoctrine->{'reference-one'}, $config, $meta);
         }
         if (isset($xmlDoctrine->{'embedded'})) {
-            $this->inspectElementForVersioned($xmlDoctrine->{'embedded'}, $config, $meta);
+            $this->inspectEmbeddedForVersioned($xmlDoctrine->{'embedded'}, $config, $meta);
         }
 
         if (!$meta->isMappedSuperclass && $config) {
@@ -70,6 +70,28 @@ class Xml extends BaseXml
             }
             if (isset($config['versioned']) && !isset($config['loggable'])) {
                 throw new InvalidMappingException("Class must be annotated with Loggable annotation in order to track versioned fields in class - {$meta->name}");
+            }
+        }
+    }
+
+    /**
+     * Searches mappings on element for embedded fields
+     */
+    public function inspectEmbeddedForVersioned(\SimpleXMLElement $element, array &$config, $meta): void
+    {
+        foreach ($element as $mapping) {
+
+            $mappingDoctrine = $mapping;
+            $class = $this->_getAttribute($mappingDoctrine, 'class');
+            $field = $this->_getAttribute($mappingDoctrine, 'name');
+
+            try {
+                $reflect = new \ReflectionClass($class);
+            } catch (\ReflectionException $e) {
+                throw new InvalidMappingException("Cannot version [{$class}] as the class could not be found");
+            }
+            foreach($reflect->getProperties() as $classProperty) {
+                $config['versioned'][] = sprintf('%s.%s', $field, $classProperty->getName());
             }
         }
     }
